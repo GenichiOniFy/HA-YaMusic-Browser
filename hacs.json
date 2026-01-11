@@ -1,4 +1,6 @@
 {
-    "name": "Yandexd Music browser",
-    "content_in_root": true
+    "name": "Yandex Music browser",
+    "content_in_root": true,
+    "country": "ru",
+    "filename": "yamusic-browser.js"
 }
