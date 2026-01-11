@@ -1,93 +1,67 @@
-// index.js — Yandex Music Browser (простая стартовая версия)
+class YandexMusicBrowser extends HTMLElement {
+  constructor() {
+    super();
+    this.attachShadow({ mode: 'open' });
+  }
 
-import { LitElement, html, css } from 'lit';
-import { customElement, property, state } from 'lit/decorators.js';
-
-// Регистрируем карточку с префиксом custom:
-@customElement('yandex-music-browser')
-export class YandexMusicBrowser extends LitElement {
-  
-  // Обязательное: hass будет приходить от Home Assistant
-  @property({ attribute: false }) hass;
-
-  // Конфигурация карточки (то, что задаёшь в YAML)
-  @state() config;
-
-  // Метод, который HA вызывает при первой загрузке карточки
   setConfig(config) {
-    if (!config) {
-      throw new Error("Invalid configuration");
-    }
+    // Здесь можно будет потом принимать конфиг от пользователя
     this.config = config;
   }
 
-  // Стили карточки (можно потом сильно расширить)
-  static styles = css`
-    :host {
-      display: block;
-      padding: 16px;
-      background: var(--card-background-color, #1e1e1e);
-      border-radius: 12px;
-      color: var(--primary-text-color);
-      box-shadow: var(--ha-card-box-shadow, 0 2px 5px rgba(0,0,0,0.2));
-    }
+  set hass(hass) {
+    this._hass = hass;
+    this.render();
+  }
 
-    .header {
-      font-size: 1.4em;
-      font-weight: bold;
-      margin-bottom: 12px;
-      color: var(--accent-color);
-    }
-
-    .status {
-      opacity: 0.7;
-      font-size: 0.9em;
-    }
-  `;
-
-  // Основной рендер
   render() {
-    if (!this.hass || !this.config) {
-      return html`<div>Загрузка...</div>`;
-    }
+    if (!this._hass) return;
 
-    const entity = this.config.entity 
-      ? this.hass.states[this.config.entity] 
-      : null;
+    // Очищаем предыдущее содержимое
+    this.shadowRoot.innerHTML = `
+      <style>
+        .container {
+          padding: 20px;
+          font-family: var(--paper-font-body1_-_font-family, Roboto, sans-serif);
+          color: var(--primary-text-color);
+          text-align: center;
+        }
+        h1 {
+          font-size: 2.5em;
+          margin-bottom: 10px;
+        }
+        p {
+          font-size: 1.2em;
+          color: var(--secondary-text-color);
+        }
+        .emoji {
+          font-size: 4em;
+          margin: 20px 0;
+        }
+      </style>
 
-    const playerState = entity 
-      ? entity.state === 'playing' ? '▶ Играет' 
-        : entity.state === 'paused' ? '⏸ На паузе' 
-        : '⏹ Остановлено'
-      : 'Нет плеера';
-
-    return html`
-      <div>
-        <div class="header">
-          Yandex Music Browser
-        </div>
-
-        <div>
-          ${this.config.title || 'Управление Яндекс Музыкой'}
-        </div>
-
-        <div class="status">
-          Состояние: ${playerState}<br>
-          Entity: ${this.config.entity || 'не указан'}
-        </div>
-
-        <!-- Здесь потом будет основной интерфейс: поиск, плейлисты, треки и т.д. -->
-        <div style="margin-top: 16px; opacity: 0.6;">
-          (пока просто заготовка — скоро добавим браузер!)
-        </div>
+      <div class="container">
+        <div class="emoji">🎵</div>
+        <h1>Hello from Yandex Music Browser!</h1>
+        <p>Привет, это твой будущий браузер Яндекс Музыки в Home Assistant.</p>
+        <p>Текущий язык HA: ${this._hass.language}</p>
+        <p>Пользователь: ${this._hass.user.name}</p>
       </div>
     `;
   }
+
+  // Размер панели (можно менять в конфиге позже)
+  getCardSize() {
+    return 6;
+  }
 }
 
-// Для отладки в консоли (опционально)
+// Регистрируем кастомный элемент
+customElements.define('yandex-music-browser', YandexMusicBrowser);
+
+// Сообщаем Lovelace, что ресурс загружен
 console.info(
-  `%c  YANDEX-MUSIC-BROWSER \n%c  Версия: 0.0.1-dev | Начало проекта`,
-  'color: #4CAF50; font-weight: bold; background: black; padding: 4px 8px;',
-  'color: white;'
+  `%c YANDEX-MUSIC-BROWSER %c v0.0.1 `,
+  'color: white; background: #ff6a00; padding: 4px 8px; border-radius: 4px; font-weight: bold;',
+  'color: #ff6a00; background: white; padding: 4px 8px; border-radius: 4px;'
 );
