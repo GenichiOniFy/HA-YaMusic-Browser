@@ -1,6 +1,7 @@
 {
     "name": "Yandex Music browser",
-    "content_in_root": false,
+    "content_in_root": true,
     "country": "ru",
+    "filename": "yamusic-browser.js",
     "iot_class": "Cloud Polling"
 }
