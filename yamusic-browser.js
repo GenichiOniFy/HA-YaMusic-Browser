@@ -4,12 +4,12 @@ class YandexMusicBrowser extends HTMLElement {
     this.attachShadow({ mode: 'open' });
     this._hass = null;
     this._config = {};
-    this.activeTab = 'search'; // search | playlists | playing
+    this.currentSection = 'main'; // main | search | library | my-wave etc.
   }
 
   setConfig(config) {
     this._config = {
-      title: config.title || 'Yandex Music Browser',
+      title: config.title || 'Яндекс Музыка',
       ...config
     };
   }
@@ -26,239 +26,233 @@ class YandexMusicBrowser extends HTMLElement {
   }
 
   applyTheme() {
-    const theme = this._hass?.selectedTheme || this._hass?.theme;
-    this.shadowRoot.host.style.setProperty('--ha-card-background', theme?.['card-background-color'] || '#1e1e1e');
-    this.shadowRoot.host.style.setProperty('--primary-text-color', theme?.['primary-text-color'] || '#e0e0e0');
-    this.shadowRoot.host.style.setProperty('--secondary-text-color', theme?.['secondary-text-color'] || '#b0b0b0');
-    this.shadowRoot.host.style.setProperty('--accent-color', theme?.['accent-color'] || '#ff6a00');
+    const theme = this._hass?.selectedTheme || this._hass?.theme || {};
+    const isDark = theme.dark ?? true;
+
+    this.shadowRoot.host.style.setProperty('--bg-main', isDark ? '#0f0f0f' : '#f5f5f5');
+    this.shadowRoot.host.style.setProperty('--bg-sidebar', isDark ? '#121212' : '#ffffff');
+    this.shadowRoot.host.style.setProperty('--text-primary', isDark ? '#ffffff' : '#000000');
+    this.shadowRoot.host.style.setProperty('--text-secondary', isDark ? '#b3b3b3' : '#666666');
+    this.shadowRoot.host.style.setProperty('--accent', '#ff6a00'); // фирменный оранжевый Яндекса
+    this.shadowRoot.host.style.setProperty('--player-bg', isDark ? '#1a1a1a' : '#ffffff');
   }
 
   render() {
     if (!this._hass) return;
-
-    const isDark = this._hass.theme?.dark || false;
 
     this.shadowRoot.innerHTML = `
       <style>
         :host {
           display: block;
           height: 100%;
-          --ha-card-background: #1e1e1e;
-          --primary-text-color: #e0e0e0;
-          --secondary-text-color: #b0b0b0;
-          --accent-color: #ff6a00;
-        }
-
-        .container {
-          height: 100%;
-          display: flex;
-          flex-direction: column;
-          font-family: var(--paper-font-body1_-_font-family, -apple-system, BlinkMacC, "Segoe UI", Roboto, sans-serif);
-          background: var(--ha-card-background);
-          color: var(--primary-text-color);
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+          background: var(--bg-main);
+          color: var(--text-primary);
           overflow: hidden;
         }
 
-        header {
-          padding: 16px 20px;
-          background: rgba(0,0,0,0.3);
-          border-bottom: 1px solid rgba(255,255,255,0.08);
+        .layout {
           display: flex;
-          justify-content: space-between;
-          align-items: center;
+          height: 100%;
         }
 
-        h1 {
-          margin: 0;
-          font-size: 1.6em;
-          font-weight: 500;
-        }
-
-        .tabs {
+        /* Sidebar (левая панель) */
+        .sidebar {
+          width: 240px;
+          background: var(--bg-sidebar);
+          border-right: 1px solid rgba(255,255,255,0.08);
           display: flex;
-          background: rgba(0,0,0,0.2);
+          flex-direction: column;
+          padding: 16px 0;
         }
 
-        .tab {
-          flex: 1;
-          padding: 14px;
-          text-align: center;
-          cursor: pointer;
-          transition: all 0.2s;
-          border-bottom: 3px solid transparent;
+        .logo {
+          padding: 0 24px 24px;
+          font-size: 1.8em;
+          font-weight: bold;
+          color: var(--accent);
         }
 
-        .tab.active {
-          background: rgba(255,106,0,0.15);
-          border-bottom-color: var(--accent-color);
-          color: var(--accent-color);
-          font-weight: 600;
-        }
-
-        .content {
-          flex: 1;
-          padding: 20px;
-          overflow-y: auto;
-        }
-
-        .search-bar {
-          display: flex;
-          margin-bottom: 20px;
-        }
-
-        input {
-          flex: 1;
-          padding: 12px 16px;
-          border: none;
-          border-radius: 8px 0 0 8px;
-          background: rgba(255,255,255,0.08);
-          color: white;
-          font-size: 1em;
-        }
-
-        button {
-          padding: 0 20px;
-          border: none;
-          background: var(--accent-color);
-          color: white;
-          border-radius: 0 8px 8px 0;
+        .nav-item {
+          padding: 12px 24px;
           cursor: pointer;
           transition: background 0.2s;
         }
 
-        button:hover {
-          background: #ff8533;
-        }
-
-        .track {
-          display: flex;
-          align-items: center;
-          padding: 12px;
-          border-radius: 8px;
-          margin-bottom: 8px;
-          background: rgba(255,255,255,0.05);
-          transition: transform 0.15s;
-        }
-
-        .track:hover {
-          transform: translateY(-2px);
+        .nav-item:hover, .nav-item.active {
           background: rgba(255,106,0,0.12);
         }
 
-        .track-art {
-          width: 50px;
-          height: 50px;
-          background: #333;
-          border-radius: 6px;
-          margin-right: 16px;
-          flex-shrink: 0;
-        }
-
-        .track-info {
-          flex: 1;
-        }
-
-        .track-title {
-          font-weight: 500;
-          margin: 0 0 4px;
-        }
-
-        .track-artist {
-          color: var(--secondary-text-color);
+        .pinned {
+          margin-top: 32px;
+          padding: 0 24px;
           font-size: 0.9em;
+          color: var(--text-secondary);
         }
 
-        .player-bar {
-          padding: 16px;
-          background: rgba(0,0,0,0.4);
+        /* Main content */
+        .main {
+          flex: 1;
+          overflow-y: auto;
+          padding: 24px;
+        }
+
+        header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 32px;
+        }
+
+        .search {
+          flex: 1;
+          max-width: 500px;
+        }
+
+        input {
+          width: 100%;
+          padding: 12px 16px;
+          border-radius: 24px;
+          border: none;
+          background: rgba(255,255,255,0.08);
+          color: var(--text-primary);
+          font-size: 1em;
+        }
+
+        .section-title {
+          font-size: 1.8em;
+          margin: 0 0 16px;
+          font-weight: 600;
+        }
+
+        .grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+          gap: 24px;
+        }
+
+        .card {
+          background: rgba(255,255,255,0.05);
+          border-radius: 12px;
+          overflow: hidden;
+          transition: transform 0.2s;
+          cursor: pointer;
+        }
+
+        .card:hover {
+          transform: scale(1.04);
+        }
+
+        .card-img {
+          width: 100%;
+          aspect-ratio: 1;
+          background: #222;
+        }
+
+        .card-title {
+          padding: 12px;
+          font-size: 1em;
+          font-weight: 500;
+        }
+
+        /* Player bar (нижний плеер) */
+        .player {
+          position: fixed;
+          bottom: 0;
+          left: 0;
+          right: 0;
+          height: 90px;
+          background: var(--player-bg);
           border-top: 1px solid rgba(255,255,255,0.08);
           display: flex;
           align-items: center;
-          gap: 16px;
+          padding: 0 24px;
+          gap: 24px;
+          box-shadow: 0 -4px 16px rgba(0,0,0,0.4);
+        }
+
+        .player-track {
+          flex: 1;
+        }
+
+        .controls button {
+          background: none;
+          border: none;
+          color: var(--text-primary);
+          font-size: 1.8em;
+          cursor: pointer;
+          margin: 0 8px;
         }
       </style>
 
-      <div class="container">
-        <header>
-          <h1>${this._config.title}</h1>
-          <div>🎧 Yandex Music</div>
-        </header>
-
-        <div class="tabs">
-          <div class="tab ${this.activeTab === 'search' ? 'active' : ''}" data-tab="search">Поиск</div>
-          <div class="tab ${this.activeTab === 'playlists' ? 'active' : ''}" data-tab="playlists">Плейлисты</div>
-          <div class="tab ${this.activeTab === 'playing' ? 'active' : ''}" data-tab="playing">Сейчас играет</div>
-        </div>
-
-        <div class="content">
-          ${this.renderContent()}
-        </div>
-
-        <div class="player-bar">
-          <div class="track-art"></div>
-          <div class="track-info">
-            <div class="track-title">Трек не выбран</div>
-            <div class="track-artist">—</div>
+      <div class="layout">
+        <!-- Sidebar -->
+        <div class="sidebar">
+          <div class="logo">Я.Музыка</div>
+          
+          <div class="nav-item ${this.currentSection === 'main' ? 'active' : ''}">Главная</div>
+          <div class="nav-item">Моя волна</div>
+          <div class="nav-item">Поиск</div>
+          <div class="nav-item">Коллекция</div>
+          
+          <div class="pinned">
+            Закреплённые
+            <div class="nav-item" style="padding: 8px 0;">Мой плейлист дня</div>
+            <div class="nav-item" style="padding: 8px 0;">Любимые треки</div>
           </div>
+        </div>
+
+        <!-- Main content -->
+        <div class="main">
+          <header>
+            <div class="search">
+              <input type="text" placeholder="Треки, исполнители, подкасты...">
+            </div>
+            <div>👤 ${this._hass?.user?.name || 'Гость'}</div>
+          </header>
+
+          <h2 class="section-title">Для вас</h2>
+          <div class="grid">
+            <div class="card"><div class="card-img"></div><div class="card-title">Мой плейлист дня</div></div>
+            <div class="card"><div class="card-img"></div><div class="card-title">Микс настроения</div></div>
+            <div class="card"><div class="card-img"></div><div class="card-title">Похоже на...</div></div>
+            <div class="card"><div class="card-img"></div><div class="card-title">Новинки</div></div>
+          </div>
+
+          <h2 class="section-title" style="margin-top: 48px;">Тренды</h2>
+          <div class="grid">
+            <div class="card"><div class="card-img"></div><div class="card-title">Чарт Яндекс Музыки</div></div>
+            <div class="card"><div class="card-img"></div><div class="card-title">Новое и горячее</div></div>
+            <div class="card"><div class="card-img"></div><div class="card-title">Хиты в машине</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Нижний плеер -->
+      <div class="player">
+        <div style="width:60px; height:60px; background:#333; border-radius:8px;"></div>
+        <div class="player-track">
+          <div>Трек не играет</div>
+          <div style="color: var(--text-secondary);">Исполнитель — Альбом</div>
+        </div>
+        <div class="controls">
+          <button>⏮</button>
           <button>▶️</button>
+          <button>⏭</button>
         </div>
       </div>
     `;
-
-    // Добавляем обработчики вкладок
-    this.shadowRoot.querySelectorAll('.tab').forEach(tab => {
-      tab.addEventListener('click', () => {
-        this.activeTab = tab.dataset.tab;
-        this.render();
-      });
-    });
-  }
-
-  renderContent() {
-    if (this.activeTab === 'search') {
-      return `
-        <div class="search-bar">
-          <input type="text" placeholder="Поиск треков, артистов, альбомов...">
-          <button>Найти</button>
-        </div>
-        <div style="text-align:center; padding: 40px 0; color: var(--secondary-text-color);">
-          Введите запрос выше, чтобы начать поиск в Яндекс Музыке
-        </div>
-      `;
-    }
-
-    if (this.activeTab === 'playlists') {
-      return `
-        <div style="text-align:center; padding: 60px 0;">
-          <div style="font-size: 4em; opacity: 0.4;">📂</div>
-          <p style="margin: 16px 0;">Ваши плейлисты появятся здесь</p>
-          <p style="color: var(--secondary-text-color);">Скоро будет авторизация и реальные данные</p>
-        </div>
-      `;
-    }
-
-    if (this.activeTab === 'playing') {
-      return `
-        <div style="text-align:center; padding: 80px 20px;">
-          <div style="font-size: 6em; margin-bottom: 20px;">🎶</div>
-          <h2>Сейчас ничего не играет</h2>
-          <p>Выберите трек из поиска или плейлиста</p>
-        </div>
-      `;
-    }
-
-    return '<p>Неизвестная вкладка</p>';
   }
 
   getCardSize() {
-    return 10;
+    return 10; // Большая панель
   }
 }
 
 customElements.define('yandex-music-browser', YandexMusicBrowser);
 
 console.info(
-  "%c YANDEX-MUSIC-BROWSER %c v0.1.0 — Let's rock! ",
-  "background: #ff6a00; color: white; padding: 4px 8px; border-radius: 4px 0 0 4px;",
-  "background: #333; color: #ff6a00; padding: 4px 8px; border-radius: 0 4px 4px 0;"
+  "%c YANDEX-MUSIC-BROWSER %c v0.2.0 — Новый дизайн 2025 ",
+  "background: #ff6a00; color: white; padding: 4px 8px;",
+  "background: #222; color: #ff6a00; padding: 4px 8px;"
 );
