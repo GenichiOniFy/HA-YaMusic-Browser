@@ -3,7 +3,7 @@
 import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.data_entry_flow import FlowResult
-from yandex_music import Client, YandexMusicError
+from yandex_music import Client
 
 from .const import DOMAIN, CONF_TOKEN
 
@@ -33,9 +33,6 @@ class YandexMusicBrowserConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         title="Yandex Music Browser",
                         data={CONF_TOKEN: token}
                     )
-                except YandexMusicError as err:
-                    errors["base"] = "invalid_token"
-                    _LOGGER.warning(f"Неверный токен: {err}")
                 except Exception as err:
                     errors["base"] = "connection_error"
                     _LOGGER.error(f"Ошибка подключения: {err}")
