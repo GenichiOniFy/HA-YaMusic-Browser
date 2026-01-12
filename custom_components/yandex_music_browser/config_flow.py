@@ -1,13 +1,13 @@
 """Config flow для Yandex Music Browser"""
 
 import voluptuous as vol
-
 from homeassistant import config_entries
 from homeassistant.data_entry_flow import FlowResult
+from yandex_music import Client, YandexMusicError
 
 from .const import DOMAIN, CONF_TOKEN
 
-class YandexMusicBrowserConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
+class YaMusicBrowserConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Конфигурационный поток"""
 
     VERSION = 1
@@ -22,14 +22,23 @@ class YandexMusicBrowserConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
             if not token:
                 errors["base"] = "empty_token"
-            elif len(token) < 30:  # грубая проверка длины
-                errors["base"] = "invalid_token_length"
             else:
-                # Пока без реальной проверки токена — просто сохраняем
-                return self.async_create_entry(
-                    title="Yandex Music Browser",
-                    data={CONF_TOKEN: token}
-                )
+                try:
+                    # Пробуем инициализировать клиент и сделать простой запрос
+                    client = Client(token)
+                    client.init()  # Это синхронно, но в HA допустимо в config flow
+                    client.account_status()  # Простой запрос для проверки токена
+                    # Если дошло сюда — токен валидный!
+                    return self.async_create_entry(
+                        title="Yandex Music Browser",
+                        data={CONF_TOKEN: token}
+                    )
+                except YandexMusicError as err:
+                    errors["base"] = "invalid_token"
+                    _LOGGER.warning(f"Неверный токен: {err}")
+                except Exception as err:
+                    errors["base"] = "connection_error"
+                    _LOGGER.error(f"Ошибка подключения: {err}")
 
         return self.async_show_form(
             step_id="user",
@@ -40,8 +49,9 @@ class YandexMusicBrowserConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             description_placeholders={
                 "help": (
                     "Вставьте OAuth-токен Яндекс Музыки.\n"
-                    "Как получить: Зайдите на music.yandex.ru → F12 → Network → "
-                    "любой запрос к api.music.yandex.net → Headers → Authorization: OAuth ваш_токен"
+                    "Как получить: music.yandex.ru → F12 → Network → "
+                    "запрос к api.music.yandex.net → Authorization: OAuth ваш_токен\n\n"
+                    "Токен обычно живёт 3–12 месяцев."
                 )
             }
         )
