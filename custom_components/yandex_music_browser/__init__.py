@@ -1,23 +1,27 @@
-DOMAIN = "yandex_music_browser"
+"""Yandex Music Browser - основа интеграции"""
 
-async def async_setup(hass, config):
-    hass.states.set("sensor.hello_world", "Привет, мир!")
-    return True
+import logging
 
-async def async_setup_entry(hass, entry):
-    """Вызывается при добавлении интеграции через UI"""
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.core import HomeAssistant
+
+from .const import DOMAIN, CONF_TOKEN
+
+_LOGGER = logging.getLogger(__name__)
+
+async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Загрузка интеграции после добавления через UI"""
     hass.data.setdefault(DOMAIN, {})
-    hass.data[DOMAIN][entry.entry_id] = "Hello from config entry!"
 
-    # Создаём сенсор
-    hass.states.async_set(
-        "sensor.hello_world",
-        "Привет из Config Entry! 🌟",
-        attributes={
-            "friendly_name": "Hello World от интеграции",
-            "icon": "mdi:star"
-        }
-    )
+    token = entry.data.get(CONF_TOKEN)
+    if not token:
+        _LOGGER.error("Токен не найден в конфигурации")
+        return False
 
-    print("Hello World интеграция добавлена через UI!")
+    # Пока просто логируем — что токен принят
+    _LOGGER.info("Yandex Music Browser успешно загружен! Токен принят (длина: %d символов)", len(token))
+
+    # Сохраняем токен в hass.data для будущих сервисов
+    hass.data[DOMAIN][entry.entry_id] = {"token": token}
+
     return True
