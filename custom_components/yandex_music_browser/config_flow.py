@@ -7,7 +7,7 @@ from yandex_music import Client, YandexMusicError
 
 from .const import DOMAIN, CONF_TOKEN
 
-class YaMusicBrowserConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
+class YandexMusicBrowserConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Конфигурационный поток"""
 
     VERSION = 1

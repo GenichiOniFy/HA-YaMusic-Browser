@@ -2,7 +2,7 @@
   "domain": "YaMusic-Browser",
   "name": "Yandex Music Browser",
   "codeowners": ["@GenichiOniFy"],
-  "dependencies": [],
+  "dependencies": ["yandex_music"],
   "requirements": [],
   "config_flow": true,
   "version": "v0.0.1",
