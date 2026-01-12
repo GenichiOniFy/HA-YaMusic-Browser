@@ -1,5 +1,5 @@
 DOMAIN = "yandex_music_browser"
 
 async def async_setup(hass, config):
-    print("Hello World! Компонент загружен!")
+    hass.states.set("sensor.hello_world", "Привет, мир!")
     return True
