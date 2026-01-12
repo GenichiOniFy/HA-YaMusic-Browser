@@ -35,7 +35,6 @@ class YandexMusicBrowserConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     )
                 except Exception as err:
                     errors["base"] = "connection_error"
-                    _LOGGER.error(f"Ошибка подключения: {err}")
 
         return self.async_show_form(
             step_id="user",
